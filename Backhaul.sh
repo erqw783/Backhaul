@@ -24,25 +24,67 @@ install_backhaul() {
     fi
 }
 
-# Function to create a new tunnel
+# Function to create a new tunnel (Supports Iran & Kharej)
 create_new_tunnel() {
     clear
-    echo -e "${GREEN}══ Create New Tunnel ══${NC}"
-    read -p "Enter Bind Port (default 3080): " BPORT
-    BPORT=${BPORT:-3080}
-    read -p "Enter Secret Token: " TOKEN
-    
-    SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
-    CONF_FILE="/etc/backhaul/iran-wssmux-${BPORT}.toml"
-    
-    mkdir -p /etc/backhaul
-    cat <<EOF > $CONF_FILE
+    echo -e "${CYAN}██████╗  █████╗  ██████╗██╗  ██╗██╗  ██╗ █████╗ ██╗   ██╗██╗     "
+    echo -e "██╔══██╗██╔══██╗██╔════╝██║ ██╔╝██║  ██║██╔══██╗██║   ██║██║     "
+    echo -e "██████╔╝███████║██║     █████╔╝ ███████║███████║██║   ██║██║     "
+    echo -e "██╔══██╗██╔══██║██║     ██╔═██╗ ██╔══██║██╔══██║██║   ██║██║     "
+    echo -e "██████╔╝██║  ██║╚██████╗██║  ██╗██║  ██║██║  ██║╚██████╔╝███████╗"
+    echo -e "╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝${NC}"
+    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله${NC}"
+    echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${YELLOW}Which server is this?${NC}"
+    echo -e "  This setting applies to all tunnel operations in this session."
+    echo ""
+    echo -e "  [1] IRAN   — Server inside Iran   (acts as listener / server side)"
+    echo -e "  [2] KHAREJ — Server outside Iran  (acts as connector / client side)"
+    echo ""
+    echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    read -p "› Choice [1/2]: " TYPE_CHOICE
+
+    if [ "$TYPE_CHOICE" = "2" ]; then
+        # KHAREJ CONFIG
+        read -p "Enter IRAN Server IP: " IRAN_IP
+        read -p "Enter IRAN Bind Port (default 3080): " BPORT
+        BPORT=${BPORT:-3080}
+        read -p "Enter Secret Token: " TOKEN
+        read -p "Enter Ports to Tunnel (e.g. 443=443,80=80): " PORTS
+        
+        SVC_NAME="backhaul-kharej-wssmux-${BPORT}.service"
+        CONF_FILE="/etc/backhaul/kharej-wssmux-${BPORT}.toml"
+        
+        mkdir -p /etc/backhaul
+        cat <<EOF > $CONF_FILE
+[client]
+remote_addr = "$IRAN_IP:$BPORT"
+transport = "mux"
+token = "$TOKEN"
+
+[client.ports]
+$PORTS
+EOF
+    else
+        # IRAN CONFIG (Default)
+        read -p "Enter Bind Port (default 3080): " BPORT
+        BPORT=${BPORT:-3080}
+        read -p "Enter Secret Token: " TOKEN
+        
+        SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
+        CONF_FILE="/etc/backhaul/iran-wssmux-${BPORT}.toml"
+        
+        mkdir -p /etc/backhaul
+        cat <<EOF > $CONF_FILE
 [server]
 bind_addr = "0.0.0.0:$BPORT"
 transport = "mux"
 token = "$TOKEN"
 EOF
+    fi
 
+    # Create Systemd Service
     cat <<EOF > /etc/systemd/system/$SVC_NAME
 [Unit]
 Description=Backhaul Tunnel Service Port $BPORT
@@ -61,7 +103,7 @@ EOF
     systemctl daemon-reload
     systemctl enable $SVC_NAME &> /dev/null
     systemctl start $SVC_NAME
-    echo -e "${GREEN}New Tunnel on port $BPORT created and started successfully!${NC}"
+    echo -e "${GREEN}Tunnel created and started successfully!${NC}"
     sleep 2
 }
 
@@ -78,7 +120,7 @@ while true; do
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     IP=$(curl -s https://api.ipify.org || echo "Unknown")
-    echo -e "  IP   : ${YELLOW}$IP${NC}   Role : ${GREEN}IRAN (Server)${NC}"
+    echo -e "  IP   : ${YELLOW}$IP${NC}"
     echo -e "  Binary: v0.7.x   Path : /usr/local/bin/backhaul"
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
@@ -150,7 +192,7 @@ while true; do
         echo -e "  Config : ${YELLOW}$CONFIG_FILE${NC}"
         echo -e "${BLUE}────────────────────────────────────────────────────────────${NC}"
         echo -e "  Service : ${GREEN}● RUNNING${NC}   CPU: $CPU   Mem: $MEM   Uptime: $UPTIME"
-        echo -e "  Tunnel  : ${GREEN}✔ CONNECTED (listener active)${NC}"
+        echo -e "  Tunnel  : ${GREEN}✔ CONNECTED${NC}"
         echo -e "${BLUE}────────────────────────────────────────────────────────────${NC}"
         echo ""
         echo -e "  [1]  Start"
@@ -179,7 +221,7 @@ while true; do
                 sleep 2
                 break 2
                 ;;
-            0) break ;; # Breaks sub-menu, returns to global main loop
+            0) break ;;
         esac
     done
 done
