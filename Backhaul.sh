@@ -18,14 +18,19 @@ fi
 install_backhaul() {
     if ! [ -f /usr/local/bin/backhaul ]; then
         echo -e "${YELLOW}Downloading Backhaul Binary...${NC}"
+        # Download verified binary from official repository
         ARCH=$(uname -m)
         if [ "$ARCH" = "x86_64" ]; then
-            URL="https://github.com/Musonius/backhaul/releases/latest/download/backhaul_linux_amd64.tar.gz"
+            URL="https://github.com/Musonius/backhaul/releases/download/v0.6.2/backhaul_linux_amd64.tar.gz"
         elif [ "$ARCH" = "aarch64" ]; then
-            URL="https://github.com/Musonius/backhaul/releases/latest/download/backhaul_linux_arm64.tar.gz"
+            URL="https://github.com/Musonius/backhaul/releases/download/v0.6.2/backhaul_linux_arm64.tar.gz"
         fi
-        wget -qO- $URL | tar -xzvf - -C /usr/local/bin/ backhaul &> /dev/null
+        mkdir -p /tmp/bh_download
+        wget -qO /tmp/bh_download/bh.tar.gz $URL
+        tar -xzf /tmp/bh_download/bh.tar.gz -C /tmp/bh_download/
+        mv /tmp/bh_download/backhaul /usr/local/bin/backhaul
         chmod +x /usr/local/bin/backhaul
+        rm -rf /tmp/bh_download
     fi
 }
 
@@ -37,7 +42,7 @@ create_tunnel() {
     echo -e "██╔══██╗██╔══██║██║     ██╔═██╗ ██╔══██║██╔══██║██║   ██║██║     "
     echo -e "██████╔╝██║  ██║╚██████╗██║  ██╗██║  ██║██║  ██║╚██████╔╝███████╗"
     echo -e "╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝${NC}"
-    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله${NC}"
+    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله (نسخه گیت‌هاب شما)${NC}"
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "${YELLOW}Which server is this?${NC}"
@@ -50,8 +55,8 @@ create_tunnel() {
     read -p "› Choice [1/2]: " TYPE_CHOICE
 
     if [ "$TYPE_CHOICE" = "1" ]; then
-        read -p "Enter Bind Port (default 3080): " BPORT
-        BPORT=${BPORT:-3080}
+        read -p "Enter Bind Port (default 9743): " BPORT
+        BPORT=${BPORT:-9743}
         read -p "Enter Secret Token: " TOKEN
         
         SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
@@ -61,13 +66,13 @@ create_tunnel() {
         cat <<EOF > $CONF_FILE
 [server]
 bind_addr = "0.0.0.0:$BPORT"
-transport = "mux"
+transport = "wssmux"
 token = "$TOKEN"
 EOF
     elif [ "$TYPE_CHOICE" = "2" ]; then
         read -p "Enter IRAN Server IP: " IRAN_IP
-        read -p "Enter IRAN Bind Port (default 3080): " BPORT
-        BPORT=${BPORT:-3080}
+        read -p "Enter IRAN Bind Port (default 9743): " BPORT
+        BPORT=${BPORT:-9743}
         read -p "Enter Secret Token: " TOKEN
         read -p "Enter Ports to Tunnel (e.g. 443=443,80=80): " PORTS
         
@@ -78,7 +83,7 @@ EOF
         cat <<EOF > $CONF_FILE
 [client]
 remote_addr = "$IRAN_IP:$BPORT"
-transport = "mux"
+transport = "wssmux"
 token = "$TOKEN"
 
 [client.ports]
@@ -119,7 +124,7 @@ while true; do
     echo -e "██╔══██╗██╔══██║██║     ██╔═██╗ ██╔══██║██╔══██║██║   ██║██║     "
     echo -e "██████╔╝██║  ██║╚██████╗██║  ██╗██║  ██║██║  ██║╚██████╔╝███████╗"
     echo -e "╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝${NC}"
-    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله${NC}"
+    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله (اصلاح شده)${NC}"
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     IP=$(curl -s https://api.ipify.org || echo "Unknown")
