@@ -32,7 +32,6 @@ create_new_tunnel() {
     BPORT=${BPORT:-3080}
     read -p "Enter Secret Token: " TOKEN
     
-    # Generate a unique name for service based on port
     SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
     CONF_FILE="/etc/backhaul/iran-wssmux-${BPORT}.toml"
     
@@ -66,7 +65,7 @@ EOF
     sleep 2
 }
 
-# Main Menu Loop
+# GLOBAL MAIN LOOP
 while true; do
     clear
     echo -e "${CYAN}██████╗  █████╗  ██████╗██╗  ██╗██╗  ██╗ █████╗ ██╗   ██╗██╗     "
@@ -180,7 +179,7 @@ while true; do
                 sleep 2
                 break 2
                 ;;
-            0) break ;;
+            0) break ;; # Breaks sub-menu, returns to global main loop
         esac
     done
 done
