@@ -9,7 +9,12 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0;37m'
 
-# Function to install Binary
+# Check Root
+if [ "$EUID" -ne 0 ]; then
+   echo -e "${RED}Please run as root${NC}"
+   exit 1
+fi
+
 install_backhaul() {
     if ! [ -f /usr/local/bin/backhaul ]; then
         echo -e "${YELLOW}Downloading Backhaul Binary...${NC}"
@@ -24,8 +29,7 @@ install_backhaul() {
     fi
 }
 
-# Function to create a new tunnel (Supports Iran & Kharej)
-create_new_tunnel() {
+create_tunnel() {
     clear
     echo -e "${CYAN}██████╗  █████╗  ██████╗██╗  ██╗██╗  ██╗ █████╗ ██╗   ██╗██╗     "
     echo -e "██╔══██╗██╔══██╗██╔════╝██║ ██╔╝██║  ██║██╔══██╗██║   ██║██║     "
@@ -37,7 +41,7 @@ create_new_tunnel() {
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "${YELLOW}Which server is this?${NC}"
-    echo -e "  This setting applies to all tunnel operations in this session."
+    echo "  This setting applies to all tunnel operations in this session."
     echo ""
     echo -e "  [1] IRAN   — Server inside Iran   (acts as listener / server side)"
     echo -e "  [2] KHAREJ — Server outside Iran  (acts as connector / client side)"
@@ -45,8 +49,22 @@ create_new_tunnel() {
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     read -p "› Choice [1/2]: " TYPE_CHOICE
 
-    if [ "$TYPE_CHOICE" = "2" ]; then
-        # KHAREJ CONFIG
+    if [ "$TYPE_CHOICE" = "1" ]; then
+        read -p "Enter Bind Port (default 3080): " BPORT
+        BPORT=${BPORT:-3080}
+        read -p "Enter Secret Token: " TOKEN
+        
+        SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
+        CONF_FILE="/etc/backhaul/iran-wssmux-${BPORT}.toml"
+        
+        mkdir -p /etc/backhaul
+        cat <<EOF > $CONF_FILE
+[server]
+bind_addr = "0.0.0.0:$BPORT"
+transport = "mux"
+token = "$TOKEN"
+EOF
+    elif [ "$TYPE_CHOICE" = "2" ]; then
         read -p "Enter IRAN Server IP: " IRAN_IP
         read -p "Enter IRAN Bind Port (default 3080): " BPORT
         BPORT=${BPORT:-3080}
@@ -67,24 +85,9 @@ token = "$TOKEN"
 $PORTS
 EOF
     else
-        # IRAN CONFIG (Default)
-        read -p "Enter Bind Port (default 3080): " BPORT
-        BPORT=${BPORT:-3080}
-        read -p "Enter Secret Token: " TOKEN
-        
-        SVC_NAME="backhaul-iran-wssmux-${BPORT}.service"
-        CONF_FILE="/etc/backhaul/iran-wssmux-${BPORT}.toml"
-        
-        mkdir -p /etc/backhaul
-        cat <<EOF > $CONF_FILE
-[server]
-bind_addr = "0.0.0.0:$BPORT"
-transport = "mux"
-token = "$TOKEN"
-EOF
+        return
     fi
 
-    # Create Systemd Service
     cat <<EOF > /etc/systemd/system/$SVC_NAME
 [Unit]
 Description=Backhaul Tunnel Service Port $BPORT
@@ -107,7 +110,7 @@ EOF
     sleep 2
 }
 
-# GLOBAL MAIN LOOP
+# MAIN MENU LOOP
 while true; do
     clear
     echo -e "${CYAN}██████╗  █████╗  ██████╗██╗  ██╗██╗  ██╗ █████╗ ██╗   ██╗██╗     "
@@ -116,7 +119,7 @@ while true; do
     echo -e "██╔══██╗██╔══██║██║     ██╔═██╗ ██╔══██║██╔══██║██║   ██║██║     "
     echo -e "██████╔╝██║  ██║╚██████╗██║  ██╗██║  ██║██║  ██║╚██████╔╝███████╗"
     echo -e "╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝${NC}"
-    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله (اصلاح شده)${NC}"
+    echo -e "${GREEN}  Backhaul Free Tunnel Manager v1.1.0 by علیرضا لاله${NC}"
     echo -e "${BLUE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     IP=$(curl -s https://api.ipify.org || echo "Unknown")
@@ -128,7 +131,6 @@ while true; do
     echo "  Select a tunnel to manage or create a new one:"
     echo ""
 
-    # Find existing Backhaul services
     SERVICES=$(systemctl list-units --type=service --all | grep backhaul | awk '{print $1}')
 
     count=1
@@ -161,7 +163,7 @@ while true; do
 
     if [ "$CHOICE" = "n" ] || [ "$CHOICE" = "N" ]; then
         install_backhaul
-        create_new_tunnel
+        create_tunnel
         continue
     fi
 
@@ -175,7 +177,7 @@ while true; do
     CONFIG_NAME=$(echo $SELECTED_SVC | sed 's/backhaul-//' | sed 's/\.service//')
     CONFIG_FILE="/etc/backhaul/${CONFIG_NAME}.toml"
 
-    # Sub-menu Loop
+    # SUB LOOP
     while true; do
         clear
         CPU=$(ps -C backhaul -o %cpu= | awk '{s+=$1} END {print s"%"}')
